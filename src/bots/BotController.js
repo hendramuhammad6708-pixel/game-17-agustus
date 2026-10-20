@@ -14,6 +14,10 @@ const TINGKAT = {
     jedaPanjat: [160, 240], // milidetik antar tekanan memanjat
     salahTombol: 0.12, // peluang menekan tombol yang sama dua kali
     lelah: 0.03, // peluang berhenti sejenak (bisa merosot)
+    ambangMiring: [8, 15], // derajat kemiringan sendok sebelum dikoreksi
+    jedaKoreksi: [130, 220], // milidetik antar koreksi sendok
+    salahArah: 0.07, // peluang mengoreksi ke arah yang salah
+    jedaTarik: [170, 270], // milidetik antar tarikan tambang
   },
   normal: {
     reaksi: [70, 200],
@@ -24,6 +28,10 @@ const TINGKAT = {
     jedaPanjat: [115, 165],
     salahTombol: 0.06,
     lelah: 0.01,
+    ambangMiring: [6, 14],
+    jedaKoreksi: [110, 200],
+    salahArah: 0.05,
+    jedaTarik: [110, 170],
   },
 };
 
@@ -90,6 +98,32 @@ const STRATEGI = {
     const salah = pp.tombolTerakhir !== 0 && Math.random() < this.tingkat.salahTombol;
     this.tekan(bot, salah ? pp.tombolTerakhir : pp.tombolTerakhir === 1 ? 2 : 1);
     bot.jadwal = sekarang + acak(this.tingkat.jedaPanjat) + (Math.random() < this.tingkat.lelah ? acak([450, 800]) : 0);
+  },
+
+  // Koreksi sendok saat kemiringan melewati ambang acak. Kadang terlambat atau salah arah.
+  KelerengSendok(bot, sekarang) {
+    const pk = this.scene.pembawa.find((p) => p.id === bot.id);
+    if (!pk || pk.status !== 'jalan' || (bot.jadwal && sekarang < bot.jadwal)) {
+      return;
+    }
+    bot.ambang ??= acak(this.tingkat.ambangMiring);
+    if (Math.abs(pk.miring) < bot.ambang) {
+      return;
+    }
+    const benar = pk.miring > 0 ? 1 : 2; // miring ke kanan dikoreksi dengan Tombol 1 (ke kiri)
+    this.tekan(bot, Math.random() < this.tingkat.salahArah ? 3 - benar : benar);
+    bot.jadwal = sekarang + acak(this.tingkat.jedaKoreksi);
+    bot.ambang = acak(this.tingkat.ambangMiring);
+  },
+
+  // Tarik secepatnya dengan jeda acak; kadang kelelahan dan berhenti sejenak.
+  TarikTambang(bot, sekarang) {
+    bot.jadwal ??= sekarang + acak([150, 350]);
+    if (sekarang < bot.jadwal) {
+      return;
+    }
+    this.tekan(bot, 1);
+    bot.jadwal = sekarang + acak(this.tingkat.jedaTarik) + (Math.random() < this.tingkat.lelah ? acak([400, 700]) : 0);
   },
 };
 

@@ -27,7 +27,7 @@ export default class Instructions extends Phaser.Scene {
     const kunci = GameState.miniGameSekarang;
     const { nama, caraMain, tombol } = this.scene.get(kunci).info;
 
-    judulPanel(this, `Ronde ${GameState.ronde + 1} dari ${GameState.jumlahRonde}`);
+    judulPanel(this, GameState.labelRonde);
 
     new Panel(this, tengahX, 228, 1040, 190, 'krem');
     teks(this, tengahX, 182, nama, { ukuran: 64, warna: WARNA_TEKS.MERAH, tebal: 700 });

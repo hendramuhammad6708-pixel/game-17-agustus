@@ -7,7 +7,20 @@ export const WARNA_KARAKTER = ['merah', 'biru', 'hijau', 'kuning'];
 export const EKSPRESI = ['normal', 'semangat', 'panik', 'pusing', 'nyengir'];
 
 const GAMBAR_LATAR = ['awan', 'kelapa', 'rumah', 'tiang-bendera', 'bendera', 'umbul-umbul', 'tanah'];
-const GAMBAR_PROPERTI = ['karung', 'tali', 'bambu', 'pinang', 'hadiah', 'garis-kapur', 'garis-finish'];
+const GAMBAR_PROPERTI = [
+  'karung',
+  'tali',
+  'bambu',
+  'pinang',
+  'hadiah',
+  'garis-kapur',
+  'garis-finish',
+  'sendok',
+  'kelereng',
+  'tali-tambang',
+  'penanda-tali',
+];
+const PROPERTI_BESAR = ['karung', 'sendok']; // ikut diperbesar bersama karakter, jadi dimuat 1,5x
 const PANEL = ['krem', 'merah', 'biru', 'hijau', 'kuning'];
 
 export const kunciKarakter = (warna, ekspresi) => `karakter-${warna}-${ekspresi}`;
@@ -24,7 +37,7 @@ function muatAset(load) {
   load.svg('bayangan', 'assets/sprites/karakter/bayangan.svg', { scale: 1.5 });
   load.svg('kerupuk', 'assets/sprites/properti/kerupuk.svg', { scale: 1.5 });
   for (const nama of GAMBAR_PROPERTI) {
-    load.svg(nama, `assets/sprites/properti/${nama}.svg`, nama === 'karung' ? { scale: 1.5 } : undefined);
+    load.svg(nama, `assets/sprites/properti/${nama}.svg`, PROPERTI_BESAR.includes(nama) ? { scale: 1.5 } : undefined);
   }
   for (const nama of GAMBAR_LATAR) {
     load.svg(nama, `assets/sprites/latar/${nama}.svg`);
@@ -72,6 +85,7 @@ export default class Preload extends Phaser.Scene {
 
   create() {
     siapkanBingkai(this.textures);
+    this.scene.launch('Fps');
     this.scene.start('Menu');
   }
 }

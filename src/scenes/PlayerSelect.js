@@ -109,8 +109,12 @@ export default class PlayerSelect extends Phaser.Scene {
     if (this.kontrol.menuDitekan('ENTER') && this.bergabung.size >= MIN_PEMAIN && !this.sedangPindah) {
       AudioManager.play('klik');
       GameState.aturPemain([...this.bergabung]);
-      GameState.mulaiTurnamen();
-      pindahScene(this, 'Instructions');
+      if (GameState.mode === 'bebas') {
+        pindahScene(this, 'FreePlay');
+      } else {
+        GameState.mulaiTurnamen();
+        pindahScene(this, 'Instructions');
+      }
     }
   }
 }

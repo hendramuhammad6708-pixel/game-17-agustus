@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
+// Nama file di public/assets/audio, disediakan vite.config.js saat dev dan build.
+import daftarAudio from 'virtual:daftar-audio';
 
 // Slot audio: nama dipakai di kode -> nama file (tanpa ekstensi) di public/assets/audio.
-// Format boleh .mp3, .ogg, atau .wav; dicari dengan urutan itu.
+// Format boleh .mp3, .ogg, atau .wav; jika ada lebih dari satu, dipilih dengan urutan itu.
 export const EFEK = {
   lompat: 'efek-lompat',
   jatuh: 'efek-jatuh',
@@ -19,23 +21,6 @@ export const MUSIK = {
 const FOLDER = 'assets/audio/';
 const FORMAT = ['mp3', 'ogg', 'wav'];
 const LANGKAH_VOLUME = 0.1;
-
-// Mengembalikan URL file yang ada, atau null. Dev server Vite membalas halaman HTML untuk file
-// yang tidak ada (bukan 404), jadi jenis isinya juga dicek supaya Phaser tidak gagal mendekode.
-async function cariFile(nama) {
-  for (const format of FORMAT) {
-    const url = `${FOLDER}${nama}.${format}`;
-    try {
-      const respons = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(3000) });
-      if (respons.ok && !(respons.headers.get('content-type') ?? '').includes('text/html')) {
-        return url;
-      }
-    } catch {
-      // Jaringan gagal atau terlalu lama: anggap file tidak ada.
-    }
-  }
-  return null;
-}
 
 // Placeholder sementara: nada pendek Web Audio untuk efek yang filenya belum ada.
 const RESEP = {
@@ -105,35 +90,29 @@ function bunyiSintetis(sound, namaEfek, volume) {
 const AudioManager = {
   game: null,
   volume: { musik: 0.6, efek: 0.8 },
-  file: {}, // nama file -> URL yang ditemukan
   musik: null,
   namaMusik: null,
+  menungguDibuka: false,
 
   pasang(game) {
     this.game = game;
   },
 
-  // Dipanggil sekali di Boot sebelum Preload.
-  async periksaFile() {
-    const semua = [...Object.values(EFEK), ...Object.values(MUSIK)];
-    const hasil = await Promise.all(semua.map(cariFile));
-    semua.forEach((nama, i) => {
-      if (hasil[i]) {
-        this.file[nama] = hasil[i];
-      }
-    });
-  },
-
-  // Dipanggil di Preload; hanya file yang ada yang dimuat.
+  // Dipanggil di Preload; hanya slot yang filenya ada di public/assets/audio yang dimuat.
   muat(load) {
-    for (const [nama, url] of Object.entries(this.file)) {
-      load.audio(nama, url);
+    for (const nama of [...Object.values(EFEK), ...Object.values(MUSIK)]) {
+      const format = FORMAT.find((f) => daftarAudio.includes(`${nama}.${f}`));
+      if (format) {
+        load.audio(nama, `${FOLDER}${nama}.${format}`);
+      }
     }
   },
 
+  // Browser menahan audio sampai ada interaksi pertama; efek selama itu dilewati
+  // supaya tidak muncul peringatan AudioContext di console.
   play(namaEfek) {
     const nama = EFEK[namaEfek];
-    if (!nama || !this.game || this.volume.efek <= 0) {
+    if (!nama || !this.game || this.volume.efek <= 0 || this.game.sound.locked) {
       return;
     }
     if (this.game.cache.audio.exists(nama)) {
@@ -152,10 +131,29 @@ const AudioManager = {
     this.musik?.destroy();
     this.musik = null;
     this.namaMusik = nama;
-    if (this.game.cache.audio.exists(nama)) {
-      this.musik = this.game.sound.add(nama, { loop: true, volume: this.volume.musik });
-      this.musik.play();
+    this.mulaiMusik();
+  },
+
+  // Selama audio masih ditahan browser, musik menunggu interaksi pertama lalu memutar musik yang berlaku saat itu.
+  mulaiMusik() {
+    const sound = this.game.sound;
+    if (!this.game.cache.audio.exists(this.namaMusik)) {
+      return;
     }
+    if (sound.locked) {
+      if (!this.menungguDibuka) {
+        this.menungguDibuka = true;
+        sound.once('unlocked', () => {
+          this.menungguDibuka = false;
+          if (!this.musik) {
+            this.mulaiMusik();
+          }
+        });
+      }
+      return;
+    }
+    this.musik = sound.add(this.namaMusik, { loop: true, volume: this.volume.musik });
+    this.musik.play();
   },
 
   // jenis: 'musik' atau 'efek'; nilai 0 sampai 1, dibulatkan ke kelipatan 10%.

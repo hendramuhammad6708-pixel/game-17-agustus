@@ -20,6 +20,8 @@ const OPSI_JEDA = ['Lanjut', 'Keluar ke Menu'];
  *   urutanBelumFinish(ids)          mengurutkan pemain yang belum finish, progres terjauh dulu
  * lalu memanggil tandaiFinish(id, waktu) saat seorang pemain finish.
  * Ronde berakhir saat tinggal satu pemain yang belum finish atau waktu habis.
+ * Mini-game beregu (tanpa urutan finish perorangan) menimpa akhiriRonde(pesan) dan memanggil
+ * selesai(urutan, pesan, poin) sendiri.
  */
 export default class BaseMiniGame extends Phaser.Scene {
   constructor(key, info) {
@@ -58,10 +60,8 @@ export default class BaseMiniGame extends Phaser.Scene {
   }
 
   buatHud() {
-    const kiri = teks(this, 0, -3, `Ronde ${GameState.ronde + 1}/${GameState.jumlahRonde} · ${this.info.nama}`, {
-      ukuran: 24,
-      tebal: 600,
-    });
+    const ronde = GameState.mode === 'bebas' ? 'Main Bebas' : `Ronde ${GameState.ronde + 1}/${GameState.jumlahRonde}`;
+    const kiri = teks(this, 0, -3, `${ronde} · ${this.info.nama}`, { ukuran: 24, tebal: 600 });
     const panelKiri = new Panel(this, 0, 0, kiri.width + 48, 64, 'krem');
     this.add.container(20 + panelKiri.lebar / 2, HUD_Y, [panelKiri, kiri]).setDepth(800);
 
@@ -83,10 +83,13 @@ export default class BaseMiniGame extends Phaser.Scene {
   }
 
   // Teks besar di tengah yang meletup masuk; jika durasi diisi, teks memudar setelah sekian milidetik.
+  // Teks panjang diperkecil supaya tetap muat di layar.
   tampilkanTengah(isi, { warna = WARNA_TEKS.KUNING, durasi } = {}) {
     this.tweens.killTweensOf(this.teksTengah);
-    this.teksTengah.setText(isi).setColor(warna).setAlpha(1).setScale(1.7);
-    this.tweens.add({ targets: this.teksTengah, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    this.teksTengah.setText(isi).setColor(warna).setAlpha(1).setScale(1);
+    const muat = Math.min(1, (GAME_WIDTH - 80) / this.teksTengah.width);
+    this.teksTengah.setScale(1.7 * muat);
+    this.tweens.add({ targets: this.teksTengah, scale: muat, duration: 260, ease: 'Back.easeOut' });
     if (durasi) {
       this.tweens.add({ targets: this.teksTengah, alpha: 0, scale: 1.3, delay: durasi, duration: 250 });
     }
@@ -164,13 +167,14 @@ export default class BaseMiniGame extends Phaser.Scene {
   }
 
   // urutanFinish: id pemain dari juara 1 sampai terakhir. Membagi poin lalu pindah ke Hasil Ronde.
-  selesai(urutanFinish, pesan = 'SELESAI!') {
+  // poin (opsional, sejajar urutanFinish) menggantikan pembagian 3/2/1/0, misalnya untuk mini-game beregu.
+  selesai(urutanFinish, pesan = 'SELESAI!', poin) {
     if (this.berakhir) {
       return;
     }
     this.berakhir = true;
     this.berjalan = false;
-    GameState.catatHasil(urutanFinish);
+    GameState.catatHasil(urutanFinish, poin);
     this.tampilkanTengah(pesan, { warna: WARNA_TEKS.KREM });
     this.time.delayedCall(1500, () => pindahScene(this, 'RoundResult'));
   }

@@ -23,18 +23,19 @@ export default class RoundResult extends Phaser.Scene {
     const tengahX = GAME_WIDTH / 2;
     const { nama } = this.scene.get(GameState.miniGameSekarang).info;
 
-    judulPanel(this, `Hasil Ronde ${GameState.ronde + 1}`);
+    this.bebas = GameState.mode === 'bebas';
+    judulPanel(this, this.bebas ? 'Hasil' : `Hasil Ronde ${GameState.ronde + 1}`);
     petunjuk(this, tengahX, 140, nama, 30);
 
-    const jumlah = GameState.hasilRonde.length;
+    const posisiTerakhir = Math.max(...GameState.hasilRonde.map((h) => h.posisi));
     GameState.hasilRonde.forEach((h, i) => {
       const p = GameState.ambilPemain(h.id);
-      // Juara 1 bersorak, juru kunci pusing, sisanya biasa.
-      const ekspresi = i === 0 ? 'semangat' : i === jumlah - 1 ? 'pusing' : 'normal';
+      // Juara 1 bersorak, juru kunci pusing, sisanya biasa. Di mini-game beregu satu tim berbagi posisi.
+      const ekspresi = h.posisi === 1 ? 'semangat' : h.posisi === posisiTerakhir ? 'pusing' : 'normal';
 
       const baris = this.add.container(tengahX, BARIS_Y + i * JARAK_BARIS, [
         new Panel(this, 0, 0, 780, 88, 'krem'),
-        new Panel(this, -330, -2, 70, 64, i === 0 ? 'kuning' : 'krem'),
+        new Panel(this, -330, -2, 70, 64, h.posisi === 1 ? 'kuning' : 'krem'),
         teks(this, -330, -7, String(h.posisi), { ukuran: 36, tebal: 700 }),
         this.add.image(-240, 36, kunciKarakter(p.sprite, ekspresi)).setOrigin(0.5, 137 / 140).setScale(0.38),
         teks(this, -180, -4, p.nama, { ukuran: 32, tebal: 700 }).setOrigin(0, 0.5),
@@ -45,14 +46,15 @@ export default class RoundResult extends Phaser.Scene {
       this.tweens.add({ targets: baris, x: tengahX, delay: 150 + i * 120, duration: 380, ease: 'Back.easeOut' });
     });
 
-    petunjuk(this, tengahX, 680, 'Tekan Enter untuk lanjut');
+    petunjuk(this, tengahX, 680, this.bebas ? 'Tekan Enter untuk memilih mini-game lain' : 'Tekan Enter untuk lanjut');
     this.kontrol = new InputManager(this);
   }
 
+  // Main Bebas kembali ke daftar mini-game; Turnamen lanjut ke Papan Skor.
   update() {
     if (this.kontrol.menuDitekan('ENTER') && !this.sedangPindah) {
       AudioManager.play('klik');
-      pindahScene(this, 'Scoreboard');
+      pindahScene(this, this.bebas ? 'FreePlay' : 'Scoreboard');
     }
   }
 }

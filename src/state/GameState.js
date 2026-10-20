@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { POIN_POSISI, MINIGAME_TURNAMEN } from '../config.js';
+import { POIN_POSISI, DAFTAR_MINIGAME } from '../config.js';
 
 // Empat slot pemain sesuai PRD bagian Skema Kontrol.
 // sprite: nama varian karakter dan panel di public/assets/sprites.
@@ -12,13 +12,16 @@ export const DATA_PEMAIN = [
 
 // Satu-satunya sumber data sesi: pemain aktif, skor kumulatif, dan jadwal mini-game.
 const GameState = {
+  mode: 'turnamen', // 'turnamen' atau 'bebas' (satu mini-game pilihan, tanpa papan skor dan podium)
   pemain: [], // keempat slot: salinan DATA_PEMAIN ditambah skor dan penanda bot
   urutanMiniGame: [], // key scene mini-game sesuai urutan turnamen
   ronde: 0, // indeks ronde yang sedang dimainkan
   hasilRonde: [], // [{ id, posisi, poin }] dari ronde terakhir
   tingkatBot: 'normal', // 'mudah' atau 'normal'; pengaturan, tidak ikut direset
+  pilihanBebas: 0, // mini-game terakhir yang dipilih di Main Bebas; tidak ikut direset
 
-  reset() {
+  reset(mode = 'turnamen') {
+    this.mode = mode;
     this.pemain = [];
     this.urutanMiniGame = [];
     this.ronde = 0;
@@ -34,7 +37,15 @@ const GameState = {
   },
 
   mulaiTurnamen() {
-    this.urutanMiniGame = Phaser.Utils.Array.Shuffle([...MINIGAME_TURNAMEN]);
+    this.mulai(Phaser.Utils.Array.Shuffle([...DAFTAR_MINIGAME]));
+  },
+
+  mulaiBebas(kunci) {
+    this.mulai([kunci]);
+  },
+
+  mulai(urutan) {
+    this.urutanMiniGame = urutan;
     this.ronde = 0;
     this.hasilRonde = [];
     this.pemain.forEach((p) => {
@@ -50,6 +61,11 @@ const GameState = {
     return this.urutanMiniGame.length;
   },
 
+  // Judul ronde di Instruksi dan HUD.
+  get labelRonde() {
+    return this.mode === 'bebas' ? 'Main Bebas' : `Ronde ${this.ronde + 1} dari ${this.jumlahRonde}`;
+  },
+
   adaRondeBerikutnya() {
     return this.ronde < this.urutanMiniGame.length - 1;
   },
@@ -62,12 +78,15 @@ const GameState = {
     return this.pemain.find((p) => p.id === id);
   },
 
-  // urutanFinish: id pemain dari juara 1 sampai terakhir.
-  catatHasil(urutanFinish) {
+  // urutanFinish: id pemain dari juara 1 sampai terakhir, mendapat poin 3/2/1/0.
+  // poinKhusus (opsional, sejajar urutanFinish) dipakai mini-game beregu; posisi lalu dihitung
+  // dari poin, sehingga anggota satu tim mendapat posisi yang sama.
+  catatHasil(urutanFinish, poinKhusus) {
+    const poin = poinKhusus ?? urutanFinish.map((_, i) => POIN_POSISI[i] ?? 0);
+    const tingkatPoin = [...new Set(poin)].sort((a, b) => b - a);
     this.hasilRonde = urutanFinish.map((id, i) => {
-      const poin = POIN_POSISI[i] ?? 0;
-      this.ambilPemain(id).skor += poin;
-      return { id, posisi: i + 1, poin };
+      this.ambilPemain(id).skor += poin[i];
+      return { id, posisi: poinKhusus ? tingkatPoin.indexOf(poin[i]) + 1 : i + 1, poin: poin[i] };
     });
   },
 

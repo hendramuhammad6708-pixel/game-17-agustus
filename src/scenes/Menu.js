@@ -11,6 +11,13 @@ import { kunciKarakter } from './Preload.js';
 const TANAH_Y = 600;
 const POSISI_KARAKTER = [120, 250, 1030, 1160];
 
+// x relatif ke tengah layar.
+const TOMBOL = [
+  { label: 'TURNAMEN', lebar: 290, x: -290 },
+  { label: 'MAIN BEBAS', lebar: 310, x: 40 },
+  { label: 'KREDIT', lebar: 210, x: 330 },
+];
+
 const PENGATURAN_Y = 490;
 const JARAK_BARIS = 66;
 const BILAH_KIRI = GAME_WIDTH / 2 - 130; // sisi kiri bilah volume dan pilihan
@@ -45,16 +52,20 @@ export default class Menu extends Phaser.Scene {
     this.tweens.add({ targets: judul, y: 142, angle: { from: -1.5, to: 1.5 }, duration: 1600, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 });
     teks(this, tengahX, 232, 'Lomba Agustusan Seru!', { ukuran: 34, warna: WARNA_TEKS.KREM, tebal: 700, garis: 8 });
 
-    // Untuk sekarang hanya ada mode Turnamen, jadi Enter selalu memulainya.
-    new Tombol(this, tengahX, 318, 'TURNAMEN').pilih(true);
+    // Baris pertama berisi tombol (kiri/kanan memilih, Enter menjalankan); baris berikutnya pengaturan.
+    this.tombol = TOMBOL.map(({ label, lebar, x }) => ({
+      label,
+      obj: new Tombol(this, tengahX + x, 318, label, { lebar }),
+    }));
+    this.pilihanTombol = 0;
 
-    // Pengaturan: panah atas/bawah memilih baris, kiri/kanan mengubah nilainya.
     new Panel(this, tengahX, PENGATURAN_Y, 560, 3 * JARAK_BARIS + 34, 'krem');
     this.baris = PENGATURAN.map((atur, i) => this.buatBaris(atur, PENGATURAN_Y - JARAK_BARIS + i * JARAK_BARIS));
-    this.pilihan = 0;
+    this.fokus = 0; // 0 = baris tombol, 1 dst. = baris pengaturan
+    this.perbaruiTombol();
     this.perbaruiBaris();
 
-    petunjuk(this, tengahX, 672, 'Enter: mulai   ·   ↑/↓: pilih   ·   ←/→: ubah', 26);
+    petunjuk(this, tengahX, 672, 'Enter: pilih   ·   ↑/↓: pindah baris   ·   ←/→: ubah', 26);
 
     // Hiasan: keempat karakter berdiri di tanah dan sesekali melompat.
     DATA_PEMAIN.forEach((p, i) => {
@@ -96,9 +107,14 @@ export default class Menu extends Phaser.Scene {
     return baris;
   }
 
+  // Tombol terpilih selalu merah karena itulah yang dijalankan Enter.
+  perbaruiTombol() {
+    this.tombol.forEach(({ obj }, i) => obj.pilih(i === this.pilihanTombol));
+  }
+
   perbaruiBaris() {
     this.baris.forEach((b, i) => {
-      const dipilih = i === this.pilihan;
+      const dipilih = i === this.fokus - 1;
       const warna = dipilih ? WARNA_TEKS.MERAH : WARNA_TEKS.GARIS;
       b.label.setColor(warna);
 
@@ -122,7 +138,7 @@ export default class Menu extends Phaser.Scene {
   }
 
   ubahPengaturan(arah) {
-    const b = this.baris[this.pilihan];
+    const b = this.baris[this.fokus - 1];
     if (b.opsi) {
       const nilai = b.opsi.map(([n]) => n);
       const indeks = Phaser.Math.Clamp(nilai.indexOf(GameState[b.jenis]) + arah, 0, nilai.length - 1);
@@ -156,21 +172,33 @@ export default class Menu extends Phaser.Scene {
     }
     if (this.kontrol.menuDitekan('ENTER')) {
       AudioManager.play('klik');
-      GameState.reset();
-      pindahScene(this, 'PlayerSelect');
+      const { label } = this.tombol[this.pilihanTombol];
+      if (label === 'KREDIT') {
+        pindahScene(this, 'Credits');
+      } else {
+        // Turnamen dan Main Bebas sama-sama memilih pemain dulu.
+        GameState.reset(label === 'MAIN BEBAS' ? 'bebas' : 'turnamen');
+        pindahScene(this, 'PlayerSelect');
+      }
       return;
     }
 
+    const jumlahBaris = this.baris.length + 1;
     const langkah = (this.kontrol.menuDitekan('DOWN') ? 1 : 0) - (this.kontrol.menuDitekan('UP') ? 1 : 0);
     if (langkah !== 0) {
-      this.pilihan = (this.pilihan + langkah + this.baris.length) % this.baris.length;
+      this.fokus = (this.fokus + langkah + jumlahBaris) % jumlahBaris;
       this.perbaruiBaris();
       AudioManager.play('klik');
     }
 
     const arah = (this.kontrol.menuDitekan('RIGHT') ? 1 : 0) - (this.kontrol.menuDitekan('LEFT') ? 1 : 0);
     if (arah !== 0) {
-      this.ubahPengaturan(arah);
+      if (this.fokus === 0) {
+        this.pilihanTombol = Phaser.Math.Clamp(this.pilihanTombol + arah, 0, this.tombol.length - 1);
+        this.perbaruiTombol();
+      } else {
+        this.ubahPengaturan(arah);
+      }
       // Klik sekaligus contoh volume efek yang baru.
       AudioManager.play('klik');
     }
