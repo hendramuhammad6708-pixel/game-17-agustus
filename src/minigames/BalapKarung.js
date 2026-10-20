@@ -1,6 +1,7 @@
 import BaseMiniGame from './BaseMiniGame.js';
 import { GAME_WIDTH, WARNA_TEKS } from '../config.js';
 import InputManager from '../input/InputManager.js';
+import AudioManager from '../audio/AudioManager.js';
 import { bernapas, regang, gepeng, jatuhBerputar, getarLayar, debu, teksPopup } from '../fx/Juice.js';
 import { petunjuk, tutsKeyboard } from '../ui/Ui.js';
 import { kunciKarakter } from '../scenes/Preload.js';
@@ -46,7 +47,7 @@ export default class BalapKarung extends BaseMiniGame {
       }
 
       petunjuk(this, 40, kakiY - 70, p.nama, 22).setOrigin(0, 0.5).setDepth(kakiY);
-      tutsKeyboard(this, 70, kakiY - 26, InputManager.label(p.id, 1), 48).setDepth(kakiY);
+      tutsKeyboard(this, p.bot ? 81 : 70, kakiY - 26, p.bot ? 'CPU' : InputManager.label(p.id, 1), 48).setDepth(kakiY);
 
       const bayangan = this.add.image(AWAL_X, kakiY + 2, 'bayangan').setScale(SKALA).setDepth(kakiY - 1);
       const sprite = this.add.image(0, 0, kunciKarakter(p.sprite, 'normal')).setOrigin(0.5, 137 / 140);
@@ -112,8 +113,10 @@ export default class BalapKarung extends BaseMiniGame {
       pl.jarakAwal = pl.jarak;
       this.ubahStatus(pl, 'lompat', 'semangat');
       regang(this, pl.badan);
+      AudioManager.play('lompat');
     } else if (pl.status === 'lompat') {
       this.ubahStatus(pl, 'jatuh', 'pusing');
+      AudioManager.play('jatuh');
       jatuhBerputar(this, pl.badan, { angkat: 28 });
       getarLayar(this);
       teksPopup(this, AWAL_X + pl.jarak, pl.kakiY - 110, 'JATUH!', WARNA_TEKS.MERAH);

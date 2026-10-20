@@ -1,6 +1,7 @@
 import BaseMiniGame from './BaseMiniGame.js';
 import { GAME_WIDTH, WARNA_TEKS } from '../config.js';
 import InputManager from '../input/InputManager.js';
+import AudioManager from '../audio/AudioManager.js';
 import { getarLayar, teksPopup } from '../fx/Juice.js';
 import { petunjuk, tutsKeyboard } from '../ui/Ui.js';
 import { kunciKarakter } from '../scenes/Preload.js';
@@ -49,8 +50,12 @@ export default class PanjatPinang extends BaseMiniGame {
 
       // Satu baris di tanah: nama lalu kedua tombol.
       petunjuk(this, x - 68, TANAH_Y + 40, p.nama, 22);
-      tutsKeyboard(this, x + 34, TANAH_Y + 38, InputManager.label(p.id, 1), 44);
-      tutsKeyboard(this, x + 86, TANAH_Y + 38, InputManager.label(p.id, 2), 44);
+      if (p.bot) {
+        tutsKeyboard(this, x + 60, TANAH_Y + 38, 'CPU', 44);
+      } else {
+        tutsKeyboard(this, x + 34, TANAH_Y + 38, InputManager.label(p.id, 1), 44);
+        tutsKeyboard(this, x + 86, TANAH_Y + 38, InputManager.label(p.id, 2), 44);
+      }
 
       return {
         id: p.id,
@@ -134,12 +139,13 @@ export default class PanjatPinang extends BaseMiniGame {
     }
   }
 
-  // Merosot: guncangan ringan dan teks "LICIN!", dibatasi supaya tidak bertubi-tubi.
+  // Merosot: guncangan ringan; teks "LICIN!" dan suaranya dibatasi supaya tidak bertubi-tubi.
   licin(pp, sekarang) {
     getarLayar(this, 0.004, 120);
     if (sekarang - pp.waktuLicin > JEDA_LICIN) {
       pp.waktuLicin = sekarang;
       teksPopup(this, pp.wadah.x, pp.wadah.y - 140, 'LICIN!', WARNA_TEKS.LANGIT);
+      AudioManager.play('merosot');
     }
   }
 

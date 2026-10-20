@@ -12,10 +12,11 @@ export const DATA_PEMAIN = [
 
 // Satu-satunya sumber data sesi: pemain aktif, skor kumulatif, dan jadwal mini-game.
 const GameState = {
-  pemain: [], // salinan DATA_PEMAIN untuk pemain yang ikut, ditambah skor
+  pemain: [], // keempat slot: salinan DATA_PEMAIN ditambah skor dan penanda bot
   urutanMiniGame: [], // key scene mini-game sesuai urutan turnamen
   ronde: 0, // indeks ronde yang sedang dimainkan
   hasilRonde: [], // [{ id, posisi, poin }] dari ronde terakhir
+  tingkatBot: 'normal', // 'mudah' atau 'normal'; pengaturan, tidak ikut direset
 
   reset() {
     this.pemain = [];
@@ -24,8 +25,12 @@ const GameState = {
     this.hasilRonde = [];
   },
 
-  aturPemain(ids) {
-    this.pemain = DATA_PEMAIN.filter((p) => ids.includes(p.id)).map((p) => ({ ...p, skor: 0 }));
+  // idsManusia: slot yang dipilih pemain; slot lain diisi CPU.
+  aturPemain(idsManusia) {
+    this.pemain = DATA_PEMAIN.map((p) => {
+      const bot = !idsManusia.includes(p.id);
+      return { ...p, bot, nama: bot ? `CPU ${p.id}` : p.nama, skor: 0 };
+    });
   },
 
   mulaiTurnamen() {

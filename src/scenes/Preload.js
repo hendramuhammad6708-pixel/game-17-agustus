@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, WARNA, WARNA_TEKS, FONT, FONT_CADANGAN } from '../config.js';
 import { siapkanPanel } from '../ui/Ui.js';
+import AudioManager from '../audio/AudioManager.js';
 
 export const WARNA_KARAKTER = ['merah', 'biru', 'hijau', 'kuning'];
 export const EKSPRESI = ['normal', 'semangat', 'panik', 'pusing', 'nyengir'];
@@ -35,6 +36,7 @@ function muatAset(load) {
   for (const nama of ['debu', 'remah', 'konfeti']) {
     load.svg(nama, `assets/sprites/partikel/${nama}.svg`);
   }
+  AudioManager.muat(load);
 }
 
 // Bingkai tambahan: potongan panel dan varian warna partikel dalam satu gambar.

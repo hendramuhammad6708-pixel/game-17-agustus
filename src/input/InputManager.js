@@ -8,8 +8,10 @@ const PEMETAAN = {
   4: [{ kode: 'LEFT', label: '←' }, { kode: 'RIGHT', label: '→' }],
 };
 
-// Enter memilih, Esc jeda, panah atas/bawah memilih opsi di menu jeda.
+// Enter memilih, Esc jeda, panah atas/bawah memilih opsi di menu.
 const TOMBOL_MENU = ['ENTER', 'ESC', 'UP', 'DOWN'];
+// Panah kiri/kanan sudah terdaftar sebagai tombol Pemain 4; di menu dipakai juga untuk mengatur nilai.
+const ALIAS_MENU = { LEFT: '4-1', RIGHT: '4-2' };
 
 // Dibuat sekali per scene: this.kontrol = new InputManager(this).
 export default class InputManager {
@@ -56,6 +58,6 @@ export default class InputManager {
   }
 
   menuDitekan(nama) {
-    return this.tombol.get(nama).barusan;
+    return this.tombol.get(ALIAS_MENU[nama] ?? nama).barusan;
   }
 }

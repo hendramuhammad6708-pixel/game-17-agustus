@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, WARNA_TEKS, DURASI_INSTRUKSI } from '../config.js';
 import GameState from '../state/GameState.js';
 import InputManager from '../input/InputManager.js';
+import AudioManager from '../audio/AudioManager.js';
 import Latar from '../fx/Latar.js';
 import { bernapas } from '../fx/Juice.js';
 import { Panel, teks, judulPanel, petunjuk, tutsKeyboard, masukScene, pindahScene } from '../ui/Ui.js';
@@ -20,6 +21,7 @@ export default class Instructions extends Phaser.Scene {
 
   create() {
     masukScene(this);
+    AudioManager.putarMusik('menu');
     new Latar(this, { tanahY: 640, gulir: true });
     const tengahX = GAME_WIDTH / 2;
     const kunci = GameState.miniGameSekarang;
@@ -46,6 +48,11 @@ export default class Instructions extends Phaser.Scene {
 
       new Panel(this, x + 40, KARTU_Y - 52, 150, 62, p.sprite);
       teks(this, x + 40, KARTU_Y - 55, p.nama, { ukuran: 24, warna: p.warnaTeks, tebal: 700 });
+      if (p.bot) {
+        tutsKeyboard(this, x + 40, KARTU_Y + 16, 'CPU', 54);
+        teks(this, x + 40, KARTU_Y + 62, 'Dimainkan komputer', { ukuran: 15, tebal: 600 });
+        return;
+      }
       tombol.forEach((t, j) => {
         const tx = x + 40 + (j - (tombol.length - 1) / 2) * 66;
         tutsKeyboard(this, tx, KARTU_Y + 16, InputManager.label(p.id, t), 54);

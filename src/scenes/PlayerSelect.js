@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, WARNA_TEKS, MIN_PEMAIN } from '../config.js';
 import GameState, { DATA_PEMAIN } from '../state/GameState.js';
 import InputManager from '../input/InputManager.js';
+import AudioManager from '../audio/AudioManager.js';
 import Latar from '../fx/Latar.js';
 import { bernapas, regang, gepeng } from '../fx/Juice.js';
 import { Panel, teks, judulPanel, petunjuk, tutsKeyboard, masukScene, pindahScene } from '../ui/Ui.js';
@@ -19,6 +20,7 @@ export default class PlayerSelect extends Phaser.Scene {
 
   create() {
     masukScene(this);
+    AudioManager.putarMusik('menu');
     new Latar(this, { tanahY: 640, gulir: true });
     const tengahX = GAME_WIDTH / 2;
 
@@ -28,7 +30,8 @@ export default class PlayerSelect extends Phaser.Scene {
     this.bergabung = new Set();
     this.kartu = DATA_PEMAIN.map((p, i) => this.buatKartu(p, i));
 
-    this.petunjukMulai = petunjuk(this, tengahX, 680, '', 32);
+    this.petunjukMulai = petunjuk(this, tengahX, 666, '', 30);
+    this.petunjukCpu = petunjuk(this, tengahX, 702, '', 20);
     this.perbaruiPetunjuk();
 
     this.kontrol = new InputManager(this);
@@ -45,8 +48,14 @@ export default class PlayerSelect extends Phaser.Scene {
       .image(x, atas + 180, kunciKarakter(p.sprite, 'normal'))
       .setOrigin(0.5, 137 / 140)
       .setScale(0.7)
-      .setAlpha(0.35);
+      .setAlpha(0.55);
     bernapas(this, sprite);
+
+    // Slot yang belum diambil manusia akan dimainkan CPU.
+    const labelCpu = this.add.container(x + 78, atas + 38, [
+      new Panel(this, 0, 0, 84, 62, 'kuning'),
+      teks(this, 0, -4, 'CPU', { ukuran: 24, tebal: 700 }),
+    ]);
 
     teks(this, x, atas + 214, p.nama, { ukuran: 30, tebal: 700 });
     teks(this, x, atas + 244, p.namaWarna, { ukuran: 22, tebal: 500 });
@@ -56,12 +65,14 @@ export default class PlayerSelect extends Phaser.Scene {
     const pil = new Panel(this, x, atas + 354, 200, 60, 'krem');
     const status = teks(this, x, atas + 350, `Tekan ${InputManager.label(p.id, 1)}`, { ukuran: 26, tebal: 700 }).setAlpha(0.6);
 
-    return { p, sprite, pil, status };
+    return { p, sprite, labelCpu, pil, status };
   }
 
   gabung(kartu) {
-    const { p, sprite, pil, status } = kartu;
+    const { p, sprite, labelCpu, pil, status } = kartu;
     this.bergabung.add(p.id);
+    AudioManager.play('lompat');
+    labelCpu.setVisible(false);
 
     sprite.setAlpha(1).setTexture(kunciKarakter(p.sprite, 'semangat'));
     regang(this, sprite);
@@ -84,6 +95,8 @@ export default class PlayerSelect extends Phaser.Scene {
     this.petunjukMulai
       .setText(cukup ? 'Tekan Enter untuk mulai!' : `Minimal ${MIN_PEMAIN} pemain untuk mulai`)
       .setColor(cukup ? WARNA_TEKS.KUNING : WARNA_TEKS.KREM);
+    const tingkat = GameState.tingkatBot === 'mudah' ? 'Mudah' : 'Normal';
+    this.petunjukCpu.setText(this.bergabung.size < 4 ? `Slot kosong dimainkan CPU (${tingkat})` : '');
   }
 
   update() {
@@ -93,7 +106,8 @@ export default class PlayerSelect extends Phaser.Scene {
       }
     }
 
-    if (this.kontrol.menuDitekan('ENTER') && this.bergabung.size >= MIN_PEMAIN) {
+    if (this.kontrol.menuDitekan('ENTER') && this.bergabung.size >= MIN_PEMAIN && !this.sedangPindah) {
+      AudioManager.play('klik');
       GameState.aturPemain([...this.bergabung]);
       GameState.mulaiTurnamen();
       pindahScene(this, 'Instructions');

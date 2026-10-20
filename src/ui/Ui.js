@@ -89,9 +89,10 @@ export function petunjuk(scene, x, y, isi, ukuran = 28) {
   return teks(scene, x, y, isi, { ukuran, warna: WARNA_TEKS.KREM, tebal: 600, garis: 7 });
 }
 
-// Tutup tombol keyboard, misalnya "Q".
+// Tutup tombol keyboard, misalnya "Q". Label lebih dari satu huruf (misalnya "CPU") membuatnya melebar.
 export function tutsKeyboard(scene, x, y, label, ukuran = 56) {
-  const panel = new Panel(scene, 0, 0, ukuran, ukuran + 6, 'krem');
+  const lebar = label.length > 1 ? Math.round(ukuran * 1.7) : ukuran;
+  const panel = new Panel(scene, 0, 0, lebar, ukuran + 6, 'krem');
   const huruf = teks(scene, 0, -4, label, { ukuran: Math.round(ukuran * 0.5), tebal: 700 });
   return scene.add.container(x, y, [panel, huruf]);
 }

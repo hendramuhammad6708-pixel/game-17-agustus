@@ -11,7 +11,8 @@ export const DURASI_MINIGAME = 60;
 // Poin untuk juara 1 sampai 4.
 export const POIN_POSISI = [3, 2, 1, 0];
 
-export const MIN_PEMAIN = 2;
+// Minimal pemain manusia; slot sisanya diisi CPU sehingga selalu ada 4 peserta.
+export const MIN_PEMAIN = 1;
 
 // Key scene mini-game di mode Turnamen; urutannya diacak setiap turnamen.
 export const MINIGAME_TURNAMEN = ['BalapKarung', 'MakanKerupuk', 'PanjatPinang'];

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import BaseMiniGame from './BaseMiniGame.js';
 import { GAME_WIDTH, WARNA_TEKS } from '../config.js';
 import InputManager from '../input/InputManager.js';
+import AudioManager from '../audio/AudioManager.js';
 import { bernapas, remah, teksPopup } from '../fx/Juice.js';
 import { petunjuk, teks, tutsKeyboard } from '../ui/Ui.js';
 import { kunciKarakter } from '../scenes/Preload.js';
@@ -64,7 +65,7 @@ export default class MakanKerupuk extends BaseMiniGame {
 
       // Satu baris di tanah: nama, tombol, sisa gigitan.
       petunjuk(this, x - 88, TANAH_Y + 40, p.nama, 22);
-      tutsKeyboard(this, x + 5, TANAH_Y + 38, InputManager.label(p.id, 1), 44);
+      tutsKeyboard(this, x + 5, TANAH_Y + 38, p.bot ? 'CPU' : InputManager.label(p.id, 1), 44);
       const teksSisa = teks(this, x + 84, TANAH_Y + 40, `Sisa ${TOTAL_GIGITAN}`, {
         ukuran: 26,
         warna: WARNA_TEKS.KUNING,
@@ -143,6 +144,7 @@ export default class MakanKerupuk extends BaseMiniGame {
     pm.waktuCapai = waktuTekan;
     pm.teksSisa.setText(pm.sisa > 0 ? `Sisa ${pm.sisa}` : 'Habis!');
     remah(this, pm.x, MULUT_Y - 6, pm.sisa > 0 ? 7 : 12);
+    AudioManager.play('gigit');
 
     if (pm.sisa > 0) {
       this.ubahStatus(pm, 'gigit', 'semangat');

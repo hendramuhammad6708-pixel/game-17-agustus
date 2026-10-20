@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, WARNA_TEKS, POIN_POSISI } from '../config.js';
 import GameState from '../state/GameState.js';
 import InputManager from '../input/InputManager.js';
+import AudioManager from '../audio/AudioManager.js';
 import Latar from '../fx/Latar.js';
 import { Panel, teks, judulPanel, petunjuk, masukScene, pindahScene } from '../ui/Ui.js';
 import { kunciKarakter } from './Preload.js';
@@ -20,6 +21,7 @@ export default class Scoreboard extends Phaser.Scene {
 
   create() {
     masukScene(this);
+    AudioManager.putarMusik('menu');
     new Latar(this, { tanahY: 640, gulir: true });
     const tengahX = GAME_WIDTH / 2;
     const skorMaks = POIN_POSISI[0] * GameState.jumlahRonde;
@@ -70,9 +72,10 @@ export default class Scoreboard extends Phaser.Scene {
   }
 
   update() {
-    if (!this.kontrol.menuDitekan('ENTER')) {
+    if (!this.kontrol.menuDitekan('ENTER') || this.sedangPindah) {
       return;
     }
+    AudioManager.play('klik');
     if (GameState.adaRondeBerikutnya()) {
       GameState.lanjutRonde();
       pindahScene(this, 'Instructions');

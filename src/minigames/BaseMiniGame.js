@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT, WARNA_TEKS, HITUNG_MUNDUR, DURASI_MINIGAME } from '../config.js';
 import GameState from '../state/GameState.js';
 import InputManager from '../input/InputManager.js';
+import BotController from '../bots/BotController.js';
+import AudioManager from '../audio/AudioManager.js';
 import Latar from '../fx/Latar.js';
 import { Panel, Tombol, teks, tirai, masukScene, pindahScene } from '../ui/Ui.js';
 
@@ -35,7 +37,10 @@ export default class BaseMiniGame extends Phaser.Scene {
     this.time.paused = false;
 
     masukScene(this);
-    this.kontrol = new InputManager(this);
+    AudioManager.putarMusik('permainan');
+    // Slot CPU dijawab BotController; mini-game memakai this.kontrol tanpa membedakan manusia dan CPU.
+    const botIds = this.pemain.filter((p) => p.bot).map((p) => p.id);
+    this.kontrol = new BotController(this, new InputManager(this), botIds, GameState.tingkatBot);
     new Latar(this, { tanahY: this.info.tanahY ?? 640, skalaBenda: this.info.skalaLatar ?? 1 });
 
     this.buatArena();
@@ -96,6 +101,7 @@ export default class BaseMiniGame extends Phaser.Scene {
           this.tampilkanTengah(String(sisa));
         } else {
           this.tampilkanTengah('MULAI!', { warna: WARNA_TEKS.MERAH, durasi: 450 });
+          AudioManager.play('peluit');
           this.berjalan = true;
         }
       });
@@ -144,6 +150,10 @@ export default class BaseMiniGame extends Phaser.Scene {
   tandaiFinish(id, waktu = performance.now()) {
     if (this.berjalan && !this.sudahFinish.some((f) => f.id === id)) {
       this.sudahFinish.push({ id, waktu });
+      // Penonton bersorak untuk yang pertama finish.
+      if (this.sudahFinish.length === 1) {
+        AudioManager.play('sorakan');
+      }
     }
   }
 
@@ -178,6 +188,7 @@ export default class BaseMiniGame extends Phaser.Scene {
   }
 
   aturJeda(jeda) {
+    AudioManager.play('klik');
     this.dijeda = jeda;
     this.time.paused = jeda;
     if (jeda) {
@@ -202,11 +213,13 @@ export default class BaseMiniGame extends Phaser.Scene {
     if (this.kontrol.menuDitekan('UP') || this.kontrol.menuDitekan('DOWN')) {
       this.pilihanJeda = (this.pilihanJeda + 1) % OPSI_JEDA.length;
       this.tandaiOpsiJeda();
+      AudioManager.play('klik');
     }
-    if (this.kontrol.menuDitekan('ENTER')) {
+    if (this.kontrol.menuDitekan('ENTER') && !this.sedangPindah) {
       if (this.pilihanJeda === 0) {
         this.aturJeda(false);
       } else {
+        AudioManager.play('klik');
         GameState.reset();
         pindahScene(this, 'Menu');
       }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, WARNA_TEKS } from '../config.js';
 import GameState from '../state/GameState.js';
 import InputManager from '../input/InputManager.js';
+import AudioManager from '../audio/AudioManager.js';
 import Latar from '../fx/Latar.js';
 import { bernapas, regang, gepeng, debu, konfeti } from '../fx/Juice.js';
 import { Panel, teks, judulPanel, petunjuk, masukScene, pindahScene } from '../ui/Ui.js';
@@ -25,6 +26,8 @@ export default class Podium extends Phaser.Scene {
 
   create() {
     masukScene(this);
+    AudioManager.putarMusik('menu');
+    AudioManager.play('sorakan');
     new Latar(this, { tanahY: TANAH_Y });
     const tengahX = GAME_WIDTH / 2;
     const peringkat = GameState.peringkat();
@@ -96,7 +99,8 @@ export default class Podium extends Phaser.Scene {
   }
 
   update() {
-    if (this.kontrol.menuDitekan('ENTER')) {
+    if (this.kontrol.menuDitekan('ENTER') && !this.sedangPindah) {
+      AudioManager.play('klik');
       GameState.reset();
       pindahScene(this, 'Menu');
     }
