@@ -1,29 +1,31 @@
 import Phaser from 'phaser';
 import BaseMiniGame from './BaseMiniGame.js';
-import { GAME_WIDTH, WARNA, WARNA_TEKS, FONT_JUDUL, FONT_TEKS } from '../config.js';
+import { GAME_WIDTH, WARNA_TEKS } from '../config.js';
 import InputManager from '../input/InputManager.js';
+import { bernapas, remah, teksPopup } from '../fx/Juice.js';
+import { petunjuk, teks, tutsKeyboard } from '../ui/Ui.js';
+import { kunciKarakter } from '../scenes/Preload.js';
 
-const PIVOT_Y = 105;
-const PANJANG_TALI = 210; // dari gantungan sampai sisi bawah kerupuk
-const AMPLITUDO = Phaser.Math.DegToRad(30);
+const TANAH_Y = 640;
+const SKALA = 0.95;
+const PIVOT_Y = 132; // sisi bawah bambu gantungan
+// Mulut karakter berada (137 - 78) satuan SVG di atas kaki; tekstur dimuat 1,5x.
+const MULUT_Y = TANAH_Y - (137 - 78) * 1.5 * SKALA;
+const PANJANG_TALI = MULUT_Y - 4 - PIVOT_Y; // dari gantungan sampai sisi bawah kerupuk
+
+const AYUNAN_MAKS = 105; // piksel, jarak mendatar terjauh sisi bawah kerupuk
+const AMPLITUDO = Math.asin(AYUNAN_MAKS / PANJANG_TALI);
 const PERIODE_MIN = 1.8; // detik per ayunan bolak-balik
 const PERIODE_MAKS = 2.2;
 const ZONA_GIGIT = 22; // piksel, jarak mendatar sisi bawah kerupuk dari mulut
 
 const TOTAL_GIGITAN = 8;
-const JARI_KERUPUK = 46;
-const JARI_KERUPUK_MIN = 14;
+const JARI_KERUPUK = 50;
+const JARI_KERUPUK_MIN = 16;
+const JARI_TEKSTUR_KERUPUK = 46 * 1.5;
 
 const DURASI_GIGIT = 250; // milidetik mulut tertutup, jadi satu gigitan per lintasan
 const DURASI_NYENGIR = 600; // milidetik tidak bisa menggigit setelah meleset
-
-const KEPALA_Y = 300;
-const MULUT_Y = KEPALA_Y + 18;
-const WARNA_MULUT = 0x5d2a1a;
-const WARNA_KERUPUK = 0xfbe9b7;
-const WARNA_TEPI_KERUPUK = 0xd4a94f;
-const WARNA_TALI = 0x6d4c41;
-const WARNA_BAMBU = 0x8d6e63;
 
 // Tekan Tombol 1 saat kerupuk yang berayun tepat di depan mulut; 8 gigitan untuk menghabiskannya.
 export default class MakanKerupuk extends BaseMiniGame {
@@ -32,6 +34,7 @@ export default class MakanKerupuk extends BaseMiniGame {
       nama: 'Makan Kerupuk',
       caraMain: 'Tekan Tombol 1 untuk menggigit saat kerupuk tepat di depan mulutmu!',
       tombol: [1],
+      tanahY: TANAH_Y,
     });
   }
 
@@ -44,55 +47,38 @@ export default class MakanKerupuk extends BaseMiniGame {
     Phaser.Utils.Array.Shuffle(periode);
 
     this.waktuMain = 0;
-    this.add.rectangle(GAME_WIDTH / 2, PIVOT_Y - 5, GAME_WIDTH, 12, WARNA_BAMBU);
+    this.add.tileSprite(GAME_WIDTH / 2, PIVOT_Y - 16, GAME_WIDTH, 32, 'bambu');
 
     this.pemakan = this.pemain.map((p, i) => {
       const x = lebarKolom * (i + 0.5);
 
-      this.add.rectangle(x, 405, 80, 130, p.warna).setStrokeStyle(3, WARNA.GELAP);
-      this.add.circle(x, KEPALA_Y, 42, WARNA.KULIT).setStrokeStyle(3, WARNA.GELAP);
-      this.add.circle(x - 14, KEPALA_Y - 8, 4, WARNA.GELAP);
-      this.add.circle(x + 14, KEPALA_Y - 8, 4, WARNA.GELAP);
-      const mulut = {
-        siap: this.add.ellipse(x, MULUT_Y, 18, 14, WARNA_MULUT),
-        gigit: this.add.rectangle(x, MULUT_Y, 22, 4, WARNA_MULUT),
-        nyengir: this.add.rectangle(x, MULUT_Y, 34, 14, WARNA.PUTIH).setStrokeStyle(3, WARNA_MULUT),
-      };
+      this.add.image(x, TANAH_Y + 6, 'bayangan').setScale(SKALA);
+      const sprite = this.add
+        .image(x, TANAH_Y + 4, kunciKarakter(p.sprite, 'normal'))
+        .setOrigin(0.5, 137 / 140)
+        .setScale(SKALA);
+      bernapas(this, sprite);
 
-      // Digambar setelah kepala supaya kerupuk tampak di depan wajah.
-      const tali = this.add.graphics();
-      const bintik = [
-        [-18, -12],
-        [14, -20],
-        [20, 10],
-        [-10, 18],
-        [-24, 6],
-      ].map(([dx, dy]) => this.add.circle(dx, dy, 4, WARNA_TEPI_KERUPUK));
-      const kerupuk = this.add.container(x, 0, [
-        this.add.circle(0, 0, JARI_KERUPUK, WARNA_KERUPUK).setStrokeStyle(4, WARNA_TEPI_KERUPUK),
-        ...bintik,
-      ]);
+      const tali = this.add.image(x, PIVOT_Y, 'tali').setOrigin(0.5, 0);
+      const kerupuk = this.add.image(x, 0, 'kerupuk');
 
-      this.add
-        .text(x, 510, p.nama, { fontFamily: FONT_JUDUL, fontSize: '24px', color: WARNA_TEKS.GELAP })
-        .setOrigin(0.5);
-      this.add
-        .text(x, 542, `Tekan ${InputManager.label(p.id, 1)}`, {
-          fontFamily: FONT_TEKS,
-          fontSize: '22px',
-          color: WARNA_TEKS.ABU,
-        })
-        .setOrigin(0.5);
-      const teksSisa = this.add
-        .text(x, 580, `Sisa: ${TOTAL_GIGITAN}`, { fontFamily: FONT_JUDUL, fontSize: '24px', color: WARNA_TEKS.MERAH })
-        .setOrigin(0.5);
+      // Satu baris di tanah: nama, tombol, sisa gigitan.
+      petunjuk(this, x - 88, TANAH_Y + 40, p.nama, 22);
+      tutsKeyboard(this, x + 5, TANAH_Y + 38, InputManager.label(p.id, 1), 44);
+      const teksSisa = teks(this, x + 84, TANAH_Y + 40, `Sisa ${TOTAL_GIGITAN}`, {
+        ukuran: 26,
+        warna: WARNA_TEKS.KUNING,
+        tebal: 700,
+        garis: 7,
+      });
 
       const pm = {
         id: p.id,
+        p,
         x,
+        sprite,
         tali,
         kerupuk,
-        mulut,
         teksSisa,
         sisa: TOTAL_GIGITAN,
         periode: periode[i],
@@ -101,7 +87,7 @@ export default class MakanKerupuk extends BaseMiniGame {
         waktuStatus: 0,
         waktuCapai: 0,
       };
-      this.ubahStatus(pm, 'siap');
+      this.aturUkuranKerupuk(pm);
       this.gambarKerupuk(pm);
       return pm;
     });
@@ -116,7 +102,7 @@ export default class MakanKerupuk extends BaseMiniGame {
         (pm.status === 'gigit' && pm.waktuStatus >= DURASI_GIGIT) ||
         (pm.status === 'nyengir' && pm.waktuStatus >= DURASI_NYENGIR)
       ) {
-        this.ubahStatus(pm, 'siap');
+        this.ubahStatus(pm, 'siap', 'normal');
       }
 
       if (pm.status === 'siap' && this.kontrol.justPressed(pm.id, 1)) {
@@ -130,43 +116,53 @@ export default class MakanKerupuk extends BaseMiniGame {
     return AMPLITUDO * Math.sin((2 * Math.PI * waktu) / pm.periode + pm.fase);
   }
 
+  // Jarak mendatar sisi bawah kerupuk dari mulut pada waktu permainan tertentu.
+  jarakMendatar(pm, waktu) {
+    return PANJANG_TALI * Math.sin(this.sudut(pm, waktu));
+  }
+
   jariKerupuk(sisa) {
     return JARI_KERUPUK_MIN + ((JARI_KERUPUK - JARI_KERUPUK_MIN) * (sisa - 1)) / (TOTAL_GIGITAN - 1);
+  }
+
+  aturUkuranKerupuk(pm) {
+    pm.kerupuk.setScale(this.jariKerupuk(pm.sisa) / JARI_TEKSTUR_KERUPUK);
   }
 
   gigit(pm) {
     // Posisi kerupuk dihitung pada saat tombol benar-benar ditekan, bukan di awal frame.
     const waktuTekan = this.kontrol.waktuTekan(pm.id, 1);
     const telat = Phaser.Math.Clamp(performance.now() - waktuTekan, 0, 100) / 1000;
-    const jarakMendatar = PANJANG_TALI * Math.sin(this.sudut(pm, this.waktuMain - telat));
 
-    if (Math.abs(jarakMendatar) > ZONA_GIGIT) {
-      this.ubahStatus(pm, 'nyengir');
+    if (Math.abs(this.jarakMendatar(pm, this.waktuMain - telat)) > ZONA_GIGIT) {
+      this.ubahStatus(pm, 'nyengir', 'nyengir');
       return;
     }
 
     pm.sisa -= 1;
     pm.waktuCapai = waktuTekan;
-    pm.teksSisa.setText(`Sisa: ${pm.sisa}`);
+    pm.teksSisa.setText(pm.sisa > 0 ? `Sisa ${pm.sisa}` : 'Habis!');
+    remah(this, pm.x, MULUT_Y - 6, pm.sisa > 0 ? 7 : 12);
 
     if (pm.sisa > 0) {
-      pm.kerupuk.setScale(this.jariKerupuk(pm.sisa) / JARI_KERUPUK);
-      this.ubahStatus(pm, 'gigit');
+      this.ubahStatus(pm, 'gigit', 'semangat');
+      this.aturUkuranKerupuk(pm);
+      // Kerupuk terpental kecil saat digigit.
+      const skala = pm.kerupuk.scale;
+      this.tweens.add({ targets: pm.kerupuk, scale: { from: skala * 1.2, to: skala }, duration: 200, ease: 'Back.easeOut' });
     } else {
       pm.kerupuk.setVisible(false);
       pm.tali.setVisible(false);
-      this.ubahStatus(pm, 'habis');
+      this.ubahStatus(pm, 'habis', 'semangat');
       this.tandaiFinish(pm.id, waktuTekan);
+      teksPopup(this, pm.x, MULUT_Y - 150, 'MANTAP!');
     }
   }
 
-  ubahStatus(pm, status) {
+  ubahStatus(pm, status, ekspresi) {
     pm.status = status;
     pm.waktuStatus = 0;
-    const bentukMulut = status === 'habis' ? 'gigit' : status;
-    for (const [nama, bentuk] of Object.entries(pm.mulut)) {
-      bentuk.setVisible(nama === bentukMulut);
-    }
+    pm.sprite.setTexture(kunciKarakter(pm.p.sprite, ekspresi));
   }
 
   gambarKerupuk(pm) {
@@ -181,11 +177,7 @@ export default class MakanKerupuk extends BaseMiniGame {
 
     // Sisi bawah kerupuk selalu sejauh PANJANG_TALI dari gantungan, jadi tetap sejajar mulut walau mengecil.
     pm.kerupuk.setPosition(pm.x + (PANJANG_TALI - r) * sin, PIVOT_Y + (PANJANG_TALI - r) * cos);
-    const ujungTali = PANJANG_TALI - 2 * r;
-    pm.tali
-      .clear()
-      .lineStyle(3, WARNA_TALI)
-      .lineBetween(pm.x, PIVOT_Y, pm.x + ujungTali * sin, PIVOT_Y + ujungTali * cos);
+    pm.tali.setRotation(-sudut).setDisplaySize(6, PANJANG_TALI - 2 * r + 6);
   }
 
   // Sisa kerupuk paling sedikit di depan; jika sama, yang lebih dulu mencapainya.

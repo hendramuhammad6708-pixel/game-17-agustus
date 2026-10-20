@@ -1,23 +1,17 @@
 import Phaser from 'phaser';
-import {
-  GAME_WIDTH,
-  GAME_HEIGHT,
-  WARNA,
-  WARNA_TEKS,
-  FONT_JUDUL,
-  FONT_TEKS,
-  HITUNG_MUNDUR,
-  DURASI_MINIGAME,
-} from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, WARNA_TEKS, HITUNG_MUNDUR, DURASI_MINIGAME } from '../config.js';
 import GameState from '../state/GameState.js';
 import InputManager from '../input/InputManager.js';
+import Latar from '../fx/Latar.js';
+import { Panel, Tombol, teks, tirai, masukScene, pindahScene } from '../ui/Ui.js';
 
-const TINGGI_HUD = 70;
+const HUD_Y = 44;
 const OPSI_JEDA = ['Lanjut', 'Keluar ke Menu'];
 
 /**
- * Kontrak bersama semua mini-game: hitung mundur, timer maksimal, jeda, dan kirim hasil.
+ * Kontrak bersama semua mini-game: latar, hitung mundur, timer maksimal, jeda, dan kirim hasil.
  *
+ * info: { nama, caraMain, tombol: [1] atau [1, 2], tanahY, skalaLatar }
  * Turunan cukup mengisi (jangan menimpa create/update):
  *   buatArena()                     menggambar arena untuk this.pemain
  *   perbaruiPermainan(time, delta)  dipanggil tiap frame selama permainan berjalan
@@ -28,7 +22,7 @@ const OPSI_JEDA = ['Lanjut', 'Keluar ke Menu'];
 export default class BaseMiniGame extends Phaser.Scene {
   constructor(key, info) {
     super(key);
-    this.info = info; // { nama, caraMain, tombol: [1] atau [1, 2] }
+    this.info = info;
   }
 
   create() {
@@ -38,11 +32,11 @@ export default class BaseMiniGame extends Phaser.Scene {
     this.berjalan = false;
     this.berakhir = false;
     this.dijeda = false;
-    this.hapusTengah = null;
     this.time.paused = false;
 
+    masukScene(this);
     this.kontrol = new InputManager(this);
-    this.cameras.main.setBackgroundColor(WARNA.KREM);
+    new Latar(this, { tanahY: this.info.tanahY ?? 640, skalaBenda: this.info.skalaLatar ?? 1 });
 
     this.buatArena();
     this.buatHud();
@@ -59,46 +53,38 @@ export default class BaseMiniGame extends Phaser.Scene {
   }
 
   buatHud() {
-    this.add.rectangle(0, 0, GAME_WIDTH, TINGGI_HUD, WARNA.MERAH).setOrigin(0);
-    this.add
-      .text(24, TINGGI_HUD / 2, `Ronde ${GameState.ronde + 1}/${GameState.jumlahRonde} · ${this.info.nama}`, {
-        fontFamily: FONT_JUDUL,
-        fontSize: '26px',
-        color: WARNA_TEKS.PUTIH,
-      })
-      .setOrigin(0, 0.5);
-    this.teksWaktu = this.add
-      .text(GAME_WIDTH / 2, TINGGI_HUD / 2, String(DURASI_MINIGAME), {
-        fontFamily: FONT_JUDUL,
-        fontSize: '44px',
-        color: WARNA_TEKS.PUTIH,
-      })
-      .setOrigin(0.5);
-    this.add
-      .text(GAME_WIDTH - 24, TINGGI_HUD / 2, 'Esc: jeda', {
-        fontFamily: FONT_TEKS,
-        fontSize: '22px',
-        color: WARNA_TEKS.PUTIH,
-      })
-      .setOrigin(1, 0.5);
+    const kiri = teks(this, 0, -3, `Ronde ${GameState.ronde + 1}/${GameState.jumlahRonde} · ${this.info.nama}`, {
+      ukuran: 24,
+      tebal: 600,
+    });
+    const panelKiri = new Panel(this, 0, 0, kiri.width + 48, 64, 'krem');
+    this.add.container(20 + panelKiri.lebar / 2, HUD_Y, [panelKiri, kiri]).setDepth(800);
 
-    this.teksTengah = this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT / 2, '', {
-        fontFamily: FONT_JUDUL,
-        fontSize: '120px',
-        color: WARNA_TEKS.MERAH,
-        stroke: WARNA_TEKS.PUTIH,
-        strokeThickness: 16,
-      })
-      .setOrigin(0.5)
-      .setDepth(10);
+    this.teksWaktu = teks(this, 0, -4, String(DURASI_MINIGAME), { ukuran: 46, tebal: 700 });
+    this.hudWaktu = this.add
+      .container(GAME_WIDTH / 2, HUD_Y + 2, [new Panel(this, 0, 0, 120, 76, 'kuning'), this.teksWaktu])
+      .setDepth(800);
+
+    const kanan = teks(this, 0, -3, 'Esc: jeda', { ukuran: 22, tebal: 500 });
+    const panelKanan = new Panel(this, 0, 0, kanan.width + 44, 56, 'krem');
+    this.add.container(GAME_WIDTH - 20 - panelKanan.lebar / 2, HUD_Y, [panelKanan, kanan]).setDepth(800);
+
+    this.teksTengah = teks(this, GAME_WIDTH / 2, GAME_HEIGHT / 2 - 20, '', {
+      ukuran: 150,
+      warna: WARNA_TEKS.KUNING,
+      tebal: 700,
+      garis: 16,
+    }).setDepth(1100);
   }
 
-  // Menampilkan teks besar di tengah; jika durasi diisi, teks hilang setelah sekian milidetik.
-  tampilkanTengah(teks, durasi) {
-    this.hapusTengah?.remove();
-    this.teksTengah.setText(teks);
-    this.hapusTengah = durasi ? this.time.delayedCall(durasi, () => this.teksTengah.setText('')) : null;
+  // Teks besar di tengah yang meletup masuk; jika durasi diisi, teks memudar setelah sekian milidetik.
+  tampilkanTengah(isi, { warna = WARNA_TEKS.KUNING, durasi } = {}) {
+    this.tweens.killTweensOf(this.teksTengah);
+    this.teksTengah.setText(isi).setColor(warna).setAlpha(1).setScale(1.7);
+    this.tweens.add({ targets: this.teksTengah, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    if (durasi) {
+      this.tweens.add({ targets: this.teksTengah, alpha: 0, scale: 1.3, delay: durasi, duration: 250 });
+    }
   }
 
   mulaiHitungMundur() {
@@ -109,7 +95,7 @@ export default class BaseMiniGame extends Phaser.Scene {
         if (sisa > 0) {
           this.tampilkanTengah(String(sisa));
         } else {
-          this.tampilkanTengah('MULAI!', 700);
+          this.tampilkanTengah('MULAI!', { warna: WARNA_TEKS.MERAH, durasi: 450 });
           this.berjalan = true;
         }
       });
@@ -129,8 +115,12 @@ export default class BaseMiniGame extends Phaser.Scene {
       return;
     }
 
+    const detikSebelum = Math.ceil(this.sisaWaktu);
     this.sisaWaktu = Math.max(0, this.sisaWaktu - delta / 1000);
-    this.teksWaktu.setText(String(Math.ceil(this.sisaWaktu)));
+    const detik = Math.ceil(this.sisaWaktu);
+    if (detik !== detikSebelum) {
+      this.perbaruiWaktu(detik);
+    }
 
     this.perbaruiPermainan(time, delta);
 
@@ -139,6 +129,15 @@ export default class BaseMiniGame extends Phaser.Scene {
       this.akhiriRonde('SELESAI!');
     } else if (this.sisaWaktu <= 0) {
       this.akhiriRonde('WAKTU HABIS!');
+    }
+  }
+
+  // 10 detik terakhir: angka merah dan berdenyut.
+  perbaruiWaktu(detik) {
+    this.teksWaktu.setText(String(detik));
+    if (detik <= 10) {
+      this.teksWaktu.setColor(WARNA_TEKS.MERAH);
+      this.tweens.add({ targets: this.hudWaktu, scale: { from: 1.25, to: 1 }, duration: 300, ease: 'Back.easeOut' });
     }
   }
 
@@ -162,31 +161,20 @@ export default class BaseMiniGame extends Phaser.Scene {
     this.berakhir = true;
     this.berjalan = false;
     GameState.catatHasil(urutanFinish);
-    this.tampilkanTengah(pesan);
-    this.time.delayedCall(1500, () => this.scene.start('RoundResult'));
+    this.tampilkanTengah(pesan, { warna: WARNA_TEKS.KREM });
+    this.time.delayedCall(1500, () => pindahScene(this, 'RoundResult'));
   }
 
   buatMenuJeda() {
     const tengahX = GAME_WIDTH / 2;
-    const latar = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.65).setOrigin(0);
-    const judul = this.add
-      .text(tengahX, 220, 'JEDA', { fontFamily: FONT_JUDUL, fontSize: '88px', color: WARNA_TEKS.PUTIH })
-      .setOrigin(0.5);
-    this.opsiJeda = OPSI_JEDA.map((label, i) =>
-      this.add
-        .text(tengahX, 360 + i * 80, label, { fontFamily: FONT_JUDUL, fontSize: '40px', color: WARNA_TEKS.PUTIH })
-        .setOrigin(0.5),
-    );
-    const petunjuk = this.add
-      .text(tengahX, 560, '↑ / ↓ pilih   ·   Enter konfirmasi   ·   Esc lanjut', {
-        fontFamily: FONT_TEKS,
-        fontSize: '24px',
-        color: WARNA_TEKS.PUTIH,
-      })
-      .setOrigin(0.5);
+    const judul = teks(this, tengahX, 232, 'JEDA', { ukuran: 72, warna: WARNA_TEKS.MERAH, tebal: 700 });
+    this.opsiJeda = OPSI_JEDA.map((label, i) => new Tombol(this, tengahX, 340 + i * 112, label, { ukuran: 36 }));
+    const bantuan = teks(this, tengahX, 548, '↑ / ↓ pilih  ·  Enter konfirmasi  ·  Esc lanjut', { ukuran: 22, tebal: 500 });
 
-    this.menuJeda = this.add.container(0, 0, [latar, judul, ...this.opsiJeda, petunjuk]).setDepth(100);
-    this.menuJeda.setVisible(false);
+    this.menuJeda = this.add
+      .container(0, 0, [tirai(this), new Panel(this, tengahX, 384, 560, 400, 'krem'), judul, ...this.opsiJeda, bantuan])
+      .setDepth(2000)
+      .setVisible(false);
   }
 
   aturJeda(jeda) {
@@ -198,16 +186,16 @@ export default class BaseMiniGame extends Phaser.Scene {
       this.tweens.resumeAll();
     }
     this.pilihanJeda = 0;
-    this.tandaiOpsiJeda();
     this.menuJeda.setVisible(jeda);
-    this.teksTengah.setVisible(!jeda);
+    if (jeda) {
+      this.tandaiOpsiJeda();
+    }
   }
 
+  // Tween tombol tetap jalan saat jeda supaya efek membesar terlihat.
   tandaiOpsiJeda() {
-    this.opsiJeda.forEach((teks, i) => {
-      const dipilih = i === this.pilihanJeda;
-      teks.setColor(dipilih ? '#ffd54f' : WARNA_TEKS.PUTIH).setScale(dipilih ? 1.15 : 1);
-    });
+    this.opsiJeda.forEach((tombol, i) => tombol.pilih(i === this.pilihanJeda));
+    this.tweens.getTweensOf(this.opsiJeda).forEach((tween) => tween.resume());
   }
 
   perbaruiMenuJeda() {
@@ -220,7 +208,7 @@ export default class BaseMiniGame extends Phaser.Scene {
         this.aturJeda(false);
       } else {
         GameState.reset();
-        this.scene.start('Menu');
+        pindahScene(this, 'Menu');
       }
     }
   }

@@ -1,11 +1,16 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, WARNA, WARNA_TEKS, FONT_JUDUL, FONT_TEKS, MIN_PEMAIN } from '../config.js';
+import { GAME_WIDTH, WARNA_TEKS, MIN_PEMAIN } from '../config.js';
 import GameState, { DATA_PEMAIN } from '../state/GameState.js';
 import InputManager from '../input/InputManager.js';
+import Latar from '../fx/Latar.js';
+import { bernapas, regang, gepeng } from '../fx/Juice.js';
+import { Panel, teks, judulPanel, petunjuk, tutsKeyboard, masukScene, pindahScene } from '../ui/Ui.js';
+import { kunciKarakter } from './Preload.js';
 
 const LEBAR_KARTU = 260;
-const TINGGI_KARTU = 330;
+const TINGGI_KARTU = 400;
 const JARAK_KARTU = 30;
+const KARTU_Y = 385;
 
 export default class PlayerSelect extends Phaser.Scene {
   constructor() {
@@ -13,28 +18,17 @@ export default class PlayerSelect extends Phaser.Scene {
   }
 
   create() {
+    masukScene(this);
+    new Latar(this, { tanahY: 640, gulir: true });
     const tengahX = GAME_WIDTH / 2;
 
-    this.cameras.main.setBackgroundColor(WARNA.KREM);
-    this.add.rectangle(0, 0, GAME_WIDTH, 110, WARNA.MERAH).setOrigin(0);
-    this.add
-      .text(tengahX, 55, 'Pilih Pemain', { fontFamily: FONT_JUDUL, fontSize: '52px', color: WARNA_TEKS.PUTIH })
-      .setOrigin(0.5);
-
-    this.add
-      .text(tengahX, 165, 'Tekan Tombol 1 milikmu untuk ikut bermain', {
-        fontFamily: FONT_TEKS,
-        fontSize: '30px',
-        color: WARNA_TEKS.GELAP,
-      })
-      .setOrigin(0.5);
+    judulPanel(this, 'Pilih Pemain');
+    petunjuk(this, tengahX, 140, 'Tekan Tombol 1 milikmu untuk ikut bermain', 30);
 
     this.bergabung = new Set();
     this.kartu = DATA_PEMAIN.map((p, i) => this.buatKartu(p, i));
 
-    this.petunjuk = this.add
-      .text(tengahX, 640, '', { fontFamily: FONT_JUDUL, fontSize: '32px' })
-      .setOrigin(0.5);
+    this.petunjukMulai = petunjuk(this, tengahX, 680, '', 32);
     this.perbaruiPetunjuk();
 
     this.kontrol = new InputManager(this);
@@ -43,59 +37,66 @@ export default class PlayerSelect extends Phaser.Scene {
   buatKartu(p, i) {
     const kiri = (GAME_WIDTH - (4 * LEBAR_KARTU + 3 * JARAK_KARTU)) / 2;
     const x = kiri + LEBAR_KARTU / 2 + i * (LEBAR_KARTU + JARAK_KARTU);
-    const y = 390;
-    const gayaTeks = { fontFamily: FONT_TEKS, fontSize: '24px', color: WARNA_TEKS.GELAP };
+    const atas = KARTU_Y - TINGGI_KARTU / 2;
 
-    this.add.rectangle(x, y, LEBAR_KARTU, TINGGI_KARTU, WARNA.PUTIH).setStrokeStyle(6, p.warna);
-    const badan = this.add.circle(x, y - 90, 50, p.warna).setAlpha(0.25);
-    this.add
-      .text(x, y - 5, p.nama, { fontFamily: FONT_JUDUL, fontSize: '30px', color: WARNA_TEKS.GELAP })
-      .setOrigin(0.5);
-    this.add.text(x, y + 30, p.namaWarna, gayaTeks).setOrigin(0.5);
-    this.add
-      .text(x, y + 65, `Tombol: ${InputManager.label(p.id, 1)} / ${InputManager.label(p.id, 2)}`, gayaTeks)
-      .setOrigin(0.5);
+    new Panel(this, x, KARTU_Y, LEBAR_KARTU, TINGGI_KARTU, 'krem');
+    this.add.image(x, atas + 182, 'bayangan').setScale(0.55);
+    const sprite = this.add
+      .image(x, atas + 180, kunciKarakter(p.sprite, 'normal'))
+      .setOrigin(0.5, 137 / 140)
+      .setScale(0.7)
+      .setAlpha(0.35);
+    bernapas(this, sprite);
 
-    const pil = this.add.rectangle(x, y + 125, 200, 52, WARNA.ABU);
-    const status = this.add
-      .text(x, y + 125, `Tekan ${InputManager.label(p.id, 1)}`, {
-        fontFamily: FONT_JUDUL,
-        fontSize: '26px',
-        color: WARNA_TEKS.ABU,
-      })
-      .setOrigin(0.5);
+    teks(this, x, atas + 214, p.nama, { ukuran: 30, tebal: 700 });
+    teks(this, x, atas + 244, p.namaWarna, { ukuran: 22, tebal: 500 });
+    tutsKeyboard(this, x - 34, atas + 290, InputManager.label(p.id, 1), 52);
+    tutsKeyboard(this, x + 34, atas + 290, InputManager.label(p.id, 2), 52);
 
-    return { badan, pil, status };
+    const pil = new Panel(this, x, atas + 354, 200, 60, 'krem');
+    const status = teks(this, x, atas + 350, `Tekan ${InputManager.label(p.id, 1)}`, { ukuran: 26, tebal: 700 }).setAlpha(0.6);
+
+    return { p, sprite, pil, status };
   }
 
-  gabung(p) {
+  gabung(kartu) {
+    const { p, sprite, pil, status } = kartu;
     this.bergabung.add(p.id);
-    const { badan, pil, status } = this.kartu[p.id - 1];
-    badan.setAlpha(1);
-    pil.setFillStyle(p.warna);
-    status.setText('SIAP!').setColor(p.warnaTeks);
+
+    sprite.setAlpha(1).setTexture(kunciKarakter(p.sprite, 'semangat'));
+    regang(this, sprite);
+    this.tweens.add({
+      targets: sprite,
+      y: sprite.y - 50,
+      duration: 220,
+      ease: 'Quad.easeOut',
+      yoyo: true,
+      onComplete: () => gepeng(this, sprite, () => bernapas(this, sprite)),
+    });
+
+    pil.aturWarna(p.sprite);
+    status.setText('SIAP!').setColor(p.warnaTeks).setAlpha(1);
     this.perbaruiPetunjuk();
   }
 
   perbaruiPetunjuk() {
-    if (this.bergabung.size >= MIN_PEMAIN) {
-      this.petunjuk.setText('Tekan Enter untuk mulai!').setColor(WARNA_TEKS.MERAH);
-    } else {
-      this.petunjuk.setText(`Minimal ${MIN_PEMAIN} pemain untuk mulai`).setColor(WARNA_TEKS.ABU);
-    }
+    const cukup = this.bergabung.size >= MIN_PEMAIN;
+    this.petunjukMulai
+      .setText(cukup ? 'Tekan Enter untuk mulai!' : `Minimal ${MIN_PEMAIN} pemain untuk mulai`)
+      .setColor(cukup ? WARNA_TEKS.KUNING : WARNA_TEKS.KREM);
   }
 
   update() {
-    for (const p of DATA_PEMAIN) {
-      if (!this.bergabung.has(p.id) && this.kontrol.justPressed(p.id, 1)) {
-        this.gabung(p);
+    for (const kartu of this.kartu) {
+      if (!this.bergabung.has(kartu.p.id) && this.kontrol.justPressed(kartu.p.id, 1)) {
+        this.gabung(kartu);
       }
     }
 
     if (this.kontrol.menuDitekan('ENTER') && this.bergabung.size >= MIN_PEMAIN) {
       GameState.aturPemain([...this.bergabung]);
       GameState.mulaiTurnamen();
-      this.scene.start('Instructions');
+      pindahScene(this, 'Instructions');
     }
   }
 }

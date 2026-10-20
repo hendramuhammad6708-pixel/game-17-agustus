@@ -14,23 +14,26 @@ export const POIN_POSISI = [3, 2, 1, 0];
 export const MIN_PEMAIN = 2;
 
 // Key scene mini-game di mode Turnamen; urutannya diacak setiap turnamen.
-export const MINIGAME_TURNAMEN = ['BalapKarung', 'MakanKerupuk'];
+export const MINIGAME_TURNAMEN = ['BalapKarung', 'MakanKerupuk', 'PanjatPinang'];
 
+// Palet art direction: kartun datar, outline #2B2D42.
 export const WARNA = {
-  MERAH: 0xe70011,
-  PUTIH: 0xffffff,
-  KREM: 0xfff4e0,
-  GELAP: 0x2b2b2b,
-  ABU: 0xdddddd,
-  KULIT: 0xf5cba7,
+  MERAH: 0xe63946,
+  KREM: 0xf1faee,
+  LANGIT: 0xa8dadc,
+  RUMPUT: 0x6ab04c,
+  KUNING: 0xffd166,
+  GARIS: 0x2b2d42,
 };
 
 export const WARNA_TEKS = {
-  MERAH: '#e70011',
-  PUTIH: '#ffffff',
-  GELAP: '#2b2b2b',
-  ABU: '#777777',
+  MERAH: '#E63946',
+  KREM: '#F1FAEE',
+  KUNING: '#FFD166',
+  LANGIT: '#A8DADC',
+  GARIS: '#2B2D42',
 };
 
-export const FONT_JUDUL = '"Arial Black", Arial, sans-serif';
-export const FONT_TEKS = 'Arial, sans-serif';
+// Fredoka dimuat dari public/assets/fonts di Preload; cadangannya untuk layar Memuat.
+export const FONT = 'Fredoka';
+export const FONT_CADANGAN = '"Arial Black", Arial, sans-serif';

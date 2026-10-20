@@ -2,11 +2,12 @@ import Phaser from 'phaser';
 import { POIN_POSISI, MINIGAME_TURNAMEN } from '../config.js';
 
 // Empat slot pemain sesuai PRD bagian Skema Kontrol.
+// sprite: nama varian karakter dan panel di public/assets/sprites.
 export const DATA_PEMAIN = [
-  { id: 1, nama: 'Pemain 1', namaWarna: 'Merah', warna: 0xe53935, warnaTeks: '#ffffff' },
-  { id: 2, nama: 'Pemain 2', namaWarna: 'Biru', warna: 0x1e88e5, warnaTeks: '#ffffff' },
-  { id: 3, nama: 'Pemain 3', namaWarna: 'Hijau', warna: 0x43a047, warnaTeks: '#ffffff' },
-  { id: 4, nama: 'Pemain 4', namaWarna: 'Kuning', warna: 0xfdd835, warnaTeks: '#3e2f00' },
+  { id: 1, nama: 'Pemain 1', namaWarna: 'Merah', sprite: 'merah', warnaTeks: '#F1FAEE' },
+  { id: 2, nama: 'Pemain 2', namaWarna: 'Biru', sprite: 'biru', warnaTeks: '#F1FAEE' },
+  { id: 3, nama: 'Pemain 3', namaWarna: 'Hijau', sprite: 'hijau', warnaTeks: '#F1FAEE' },
+  { id: 4, nama: 'Pemain 4', namaWarna: 'Kuning', sprite: 'kuning', warnaTeks: '#2B2D42' },
 ];
 
 // Satu-satunya sumber data sesi: pemain aktif, skor kumulatif, dan jadwal mini-game.

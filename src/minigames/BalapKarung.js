@@ -1,22 +1,24 @@
 import BaseMiniGame from './BaseMiniGame.js';
-import { GAME_WIDTH, WARNA, WARNA_TEKS, FONT_JUDUL, FONT_TEKS } from '../config.js';
+import { GAME_WIDTH, WARNA_TEKS } from '../config.js';
 import InputManager from '../input/InputManager.js';
+import { bernapas, regang, gepeng, jatuhBerputar, getarLayar, debu, teksPopup } from '../fx/Juice.js';
+import { petunjuk, tutsKeyboard } from '../ui/Ui.js';
+import { kunciKarakter } from '../scenes/Preload.js';
 
+const TANAH_Y = 300;
+const TINGGI_JALUR = 100;
 const AWAL_X = 230;
 const FINISH_X = 1190;
-const TINGGI_JALUR = 130;
-
-const LEBAR_KARUNG = 36;
-const TINGGI_KARUNG = 44;
-const JARI_KEPALA = 13;
+const SKALA = 0.55;
 
 const JARAK_LOMPAT = 40; // piksel maju per lompatan
-const TINGGI_LOMPAT = 28; // piksel di puncak lompatan
+const TINGGI_LOMPAT = 34; // piksel di puncak lompatan
 const DURASI_LOMPAT = 450; // milidetik di udara
 const DURASI_JATUH = 1000; // milidetik diam setelah jatuh
 
-// Jarak tempuh saat sisi depan karung menyentuh garis finish.
-const PANJANG_LINTASAN = FINISH_X - AWAL_X - LEBAR_KARUNG / 2;
+// Setengah lebar karung di layar; jarak tempuh saat sisi depan karung menyentuh garis finish.
+const SETENGAH_KARUNG = 47 * 1.5 * SKALA;
+const PANJANG_LINTASAN = FINISH_X - 12 - AWAL_X - SETENGAH_KARUNG;
 
 // Tekan Tombol 1 untuk melompat; menekan lagi sebelum mendarat membuat karakter jatuh.
 export default class BalapKarung extends BaseMiniGame {
@@ -25,43 +27,43 @@ export default class BalapKarung extends BaseMiniGame {
       nama: 'Balap Karung',
       caraMain: 'Tekan Tombol 1 untuk melompat maju, tapi tunggu sampai mendarat atau kamu jatuh!',
       tombol: [1],
+      tanahY: TANAH_Y,
+      skalaLatar: 0.65,
     });
   }
 
   buatArena() {
-    const atas = 110 + (4 - this.pemain.length) * (TINGGI_JALUR / 2);
+    const atas = TANAH_Y + (4 - this.pemain.length) * (TINGGI_JALUR / 2);
+    const bawah = atas + this.pemain.length * TINGGI_JALUR;
+
+    this.add.tileSprite(FINISH_X, (atas + bawah) / 2, 24, bawah - atas - 10, 'garis-finish');
 
     this.pelari = this.pemain.map((p, i) => {
-      const tengahY = atas + TINGGI_JALUR / 2 + i * TINGGI_JALUR;
-      const tanahY = tengahY + 45;
+      // Kaki berpijak dekat batas bawah jalur; jalur bawah digambar di depan jalur atas.
+      const kakiY = atas + (i + 1) * TINGGI_JALUR - 14;
+      if (i < this.pemain.length - 1) {
+        this.add.tileSprite(GAME_WIDTH / 2, atas + (i + 1) * TINGGI_JALUR, GAME_WIDTH, 8, 'garis-kapur');
+      }
 
-      this.add.rectangle(GAME_WIDTH / 2, tengahY, GAME_WIDTH - 40, TINGGI_JALUR - 14, WARNA.PUTIH);
-      this.add.rectangle(GAME_WIDTH / 2, tanahY, GAME_WIDTH - 40, 4, WARNA.ABU);
-      this.add
-        .text(40, tengahY - 18, p.nama, { fontFamily: FONT_JUDUL, fontSize: '24px', color: WARNA_TEKS.GELAP })
-        .setOrigin(0, 0.5);
-      this.add
-        .text(40, tengahY + 18, `Tekan ${InputManager.label(p.id, 1)}`, {
-          fontFamily: FONT_TEKS,
-          fontSize: '22px',
-          color: WARNA_TEKS.ABU,
-        })
-        .setOrigin(0, 0.5);
-      this.add.rectangle(FINISH_X, tengahY, 10, TINGGI_JALUR - 14, WARNA.GELAP);
+      petunjuk(this, 40, kakiY - 70, p.nama, 22).setOrigin(0, 0.5).setDepth(kakiY);
+      tutsKeyboard(this, 70, kakiY - 26, InputManager.label(p.id, 1), 48).setDepth(kakiY);
 
-      // Karakter sementara: karung warna pemain dengan kepala bulat, titik pusat di dasar karung.
-      const karung = this.add
-        .rectangle(0, -TINGGI_KARUNG / 2, LEBAR_KARUNG, TINGGI_KARUNG, p.warna)
-        .setStrokeStyle(3, WARNA.GELAP);
-      const kepala = this.add
-        .circle(0, -TINGGI_KARUNG - JARI_KEPALA + 2, JARI_KEPALA, WARNA.KULIT)
-        .setStrokeStyle(3, WARNA.GELAP);
-      const badan = this.add.container(AWAL_X, tanahY, [karung, kepala]);
+      const bayangan = this.add.image(AWAL_X, kakiY + 2, 'bayangan').setScale(SKALA).setDepth(kakiY - 1);
+      const sprite = this.add.image(0, 0, kunciKarakter(p.sprite, 'normal')).setOrigin(0.5, 137 / 140);
+      const karung = this.add.image(0, 0, 'karung').setOrigin(0.5, 137 / 140);
+      // badan dianimasikan Juice (skala, sudut); wadah dipindah logika permainan.
+      const badan = this.add.container(0, 0, [sprite, karung]).setScale(SKALA);
+      const wadah = this.add.container(AWAL_X, kakiY, [badan]).setDepth(kakiY);
+      bernapas(this, badan);
 
       return {
         id: p.id,
+        p,
+        sprite,
         badan,
-        tanahY,
+        wadah,
+        bayangan,
+        kakiY,
         jarak: 0,
         jarakAwal: 0,
         status: 'siap', // 'siap' di tanah, 'lompat' di udara, 'jatuh' diam sementara
@@ -95,42 +97,61 @@ export default class BalapKarung extends BaseMiniGame {
         // Mundurkan ke saat tepat menyentuh garis, supaya yang finish di frame yang sama tetap urut adil.
         const lewat = ((pl.jarak - PANJANG_LINTASAN) / JARAK_LOMPAT) * DURASI_LOMPAT;
         this.tandaiFinish(pl.id, performance.now() - lewat);
+        teksPopup(this, AWAL_X + pl.jarak, pl.kakiY - 110, 'MANTAP!');
       }
       if (f >= 1) {
-        this.ubahStatus(pl, 'siap');
+        this.mendarat(pl);
       }
     } else if (pl.status === 'jatuh' && pl.waktuStatus >= DURASI_JATUH) {
-      this.ubahStatus(pl, 'siap');
+      this.bangun(pl);
     }
   }
 
   tekan(pl) {
     if (pl.status === 'siap') {
       pl.jarakAwal = pl.jarak;
-      this.ubahStatus(pl, 'lompat');
+      this.ubahStatus(pl, 'lompat', 'semangat');
+      regang(this, pl.badan);
     } else if (pl.status === 'lompat') {
-      this.ubahStatus(pl, 'jatuh');
+      this.ubahStatus(pl, 'jatuh', 'pusing');
+      jatuhBerputar(this, pl.badan, { angkat: 28 });
+      getarLayar(this);
+      teksPopup(this, AWAL_X + pl.jarak, pl.kakiY - 110, 'JATUH!', WARNA_TEKS.MERAH);
     }
   }
 
-  ubahStatus(pl, status) {
+  mendarat(pl) {
+    this.ubahStatus(pl, 'siap', pl.finish ? 'semangat' : 'normal');
+    gepeng(this, pl.badan, () => bernapas(this, pl.badan));
+    debu(this, AWAL_X + pl.jarak, pl.kakiY, 5);
+  }
+
+  bangun(pl) {
+    this.ubahStatus(pl, 'siap', 'normal');
+    this.tweens.add({
+      targets: pl.badan,
+      angle: 0,
+      y: 0,
+      duration: 220,
+      ease: 'Back.easeOut',
+      onComplete: () => pl.status === 'siap' && bernapas(this, pl.badan),
+    });
+  }
+
+  ubahStatus(pl, status, ekspresi) {
     pl.status = status;
     pl.waktuStatus = 0;
     pl.waktuCapai = performance.now();
+    pl.sprite.setTexture(kunciKarakter(pl.p.sprite, ekspresi));
   }
 
   gambar(pl) {
-    const x = AWAL_X + pl.jarak;
-
-    if (pl.status === 'jatuh') {
-      // Rebah ke depan di atas tanah.
-      pl.badan.setPosition(x, pl.tanahY - LEBAR_KARUNG / 2).setAngle(90);
-      return;
-    }
-
     // Lintasan parabola: 0 di awal dan akhir lompatan, TINGGI_LOMPAT di tengah.
     const f = pl.status === 'lompat' ? Math.min(1, pl.waktuStatus / DURASI_LOMPAT) : 0;
-    pl.badan.setPosition(x, pl.tanahY - 4 * TINGGI_LOMPAT * f * (1 - f)).setAngle(0);
+    const naik = 4 * TINGGI_LOMPAT * f * (1 - f);
+    const x = AWAL_X + pl.jarak;
+    pl.wadah.setPosition(x, pl.kakiY - naik);
+    pl.bayangan.setPosition(x, pl.kakiY + 2).setScale(SKALA * (1 - naik / (TINGGI_LOMPAT * 2.5)));
   }
 
   // Posisi terjauh di depan; jika sama, yang lebih dulu sampai di posisi itu.
